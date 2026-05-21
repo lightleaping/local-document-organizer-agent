@@ -6,6 +6,7 @@ from src.summarizer import summarize_text
 from src.keyword_extractor import extract_keywords
 from src.duplicate_detector import detect_duplicates
 from src.report_generator import generate_markdown_report
+from src.file_renamer import suggest_filenames
 
 
 def parse_args():
@@ -48,10 +49,13 @@ def print_document_summary(documents):
     if not documents:
         print("No supported documents found.")
         return
+    
+    filename_suggestions = suggest_filenames(documents)
 
     for index, document in enumerate(documents, start=1):
         summary = summarize_text(document.text, max_sentences=2)
         keywords = extract_keywords(document.text, top_k=5)
+        suggested_name = filename_suggestions.get(document.file_name, document.file_name)
 
         print(f"{index}. {document.file_name}")
         print(f"   Extension  : {document.extension}")
@@ -59,10 +63,11 @@ def print_document_summary(documents):
         print(f"   Path       : {document.file_path}")
         print(f"   Summary    : {summary}")
         print(f"   Keywords   : {format_keywords(keywords)}")
+        print(f"   Suggested Name  : {suggested_name}")
         print()
 
 def print_duplicate_candidates(documents):
-    candidates = detect_duplicates(documents, threshold=0.85)
+    candidates = detect_duplicates(documents, threshold=0.70)
 
     print("\nDuplicate Candidates")
     print("-" * 40)
