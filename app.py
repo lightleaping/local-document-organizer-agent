@@ -31,22 +31,19 @@ def render_keyword_chips(keywords):
 
     chip_html = "<div style='display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; margin-bottom:8px;'>"
 
-    for index, keyword in enumerate(keywords, start=1):
+    for keyword in keywords:
         chip_html += (
             "<span style='"
-            "background:#e0f2fe;"
-            "color:#0f172a;"
-            "border:1px solid #38bdf8;"
+            "background:#dbeafe;"
+            "color:#111827;"
+            "border:1px solid #2563eb;"
             "border-radius:999px;"
             "padding:6px 12px;"
             "font-size:0.92rem;"
             "font-weight:700;"
             "white-space:nowrap;"
-            "display:inline-flex;"
-            "align-items:center;"
-            "gap:4px;"
             "'>"
-            f"<span style='color:#0369a1;'>#{index}</span> {keyword}"
+            f"{keyword}"
             "</span>"
         )
 
@@ -56,34 +53,33 @@ def render_keyword_chips(keywords):
 
 def render_document_card(analysis, index: int):
     with st.container(border=True):
-        st.markdown(f"### {index}. {analysis.file_name}")
+        st.markdown(f"### {index}. {analysis.title}")
+        st.caption(analysis.file_name)
 
-        top_col1, top_col2, top_col3 = st.columns([1, 1, 2])
+        col1, col2, col3 = st.columns([1.2, 1, 2])
 
-        with top_col1:
+        with col1:
+            st.metric("문서 유형", analysis.document_type)
+
+        with col2:
             st.metric("글자 수", f"{analysis.char_count:,}")
 
-        with top_col2:
-            st.metric("대표 주제", analysis.topic)
-
-        with top_col3:
+        with col3:
             st.markdown("**추천 파일명**")
             st.code(analysis.suggested_name, language=None)
 
-        st.markdown("**핵심 키워드 · 중요도 순**")
+        st.caption(analysis.filename_reason)
+
+        st.markdown("**핵심 키워드**")
         render_keyword_chips(analysis.keywords)
 
         st.markdown("**요약**")
         st.write(analysis.summary)
 
-        st.caption(
-            "대표 주제, 추천 파일명, 핵심 키워드는 같은 키워드 순위 결과를 기준으로 생성됩니다."
-        )
-
 
 def main():
     st.title("📁 Local Document Organizer Agent")
-    st.caption("문서를 업로드하면 대표 주제, 핵심 키워드, 추천 파일명, 요약, 중복 의심 문서를 한 화면에서 정리합니다.")
+    st.caption("문서를 업로드하면 문서 유형, 제목, 핵심 키워드, 추천 파일명, 요약, 중복 후보를 정리합니다.")
 
     with st.sidebar:
         st.header("분석 설정")
@@ -98,11 +94,12 @@ def main():
         )
 
         st.divider()
-        st.markdown("### 결과 생성 기준")
-        st.write("1. 핵심 키워드를 중요도 순으로 추출")
-        st.write("2. 키워드로 대표 주제 판단")
-        st.write("3. 같은 키워드로 추천 파일명 생성")
-        st.write("4. 문서 핵심 문장으로 요약 생성")
+        st.markdown("### 분석 방식")
+        st.write("1. 문서 유형 판정")
+        st.write("2. 유형별 제목 생성")
+        st.write("3. 핵심 개념 선별")
+        st.write("4. 유형 기반 파일명 추천")
+        st.write("5. 문장형 요약 생성")
 
     uploaded_files = st.file_uploader(
         "분석할 문서를 업로드하세요",
@@ -112,14 +109,6 @@ def main():
 
     if not uploaded_files:
         st.info("문서를 업로드하면 문서별 카드 형태로 결과가 표시됩니다.")
-
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.container(border=True).markdown("### 대표 주제\n키워드 기반으로 문서 성격을 분류합니다.")
-        with col2:
-            st.container(border=True).markdown("### 파일명 추천\n대표 주제와 핵심 키워드를 조합합니다.")
-        with col3:
-            st.container(border=True).markdown("### 리포트\nMarkdown 리포트를 미리보고 다운로드합니다.")
         return
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -142,11 +131,10 @@ def main():
 
         st.success(f"{len(documents)}개 문서를 분석했습니다.")
 
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3 = st.columns(3)
         col1.metric("문서 수", len(documents))
         col2.metric("중복 후보", len(duplicate_candidates))
-        col3.metric("요약 문장", summary_sentences)
-        col4.metric("키워드", keyword_count)
+        col3.metric("키워드 수", keyword_count)
 
         st.divider()
 

@@ -31,10 +31,12 @@ def print_document_cards(analyses):
 
     for index, analysis in enumerate(analyses, start=1):
         print(f"[{index}] {analysis.file_name}")
+        print(f"    문서 제목     : {analysis.title}")
+        print(f"    문서 유형     : {analysis.document_type}")
         print(f"    글자 수       : {analysis.char_count}")
-        print(f"    대표 주제     : {analysis.topic}")
         print(f"    핵심 키워드   : {', '.join(analysis.keywords)}")
         print(f"    추천 파일명   : {analysis.suggested_name}")
+        print(f"    추천 근거     : {analysis.filename_reason}")
         print(f"    요약          : {analysis.summary}")
         print()
 
