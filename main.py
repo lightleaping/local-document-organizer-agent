@@ -2,11 +2,9 @@ import argparse
 from pathlib import Path
 
 from src.document_loader import load_documents
-from src.summarizer import summarize_text
-from src.keyword_extractor import extract_keywords
 from src.duplicate_detector import detect_duplicates
 from src.report_generator import generate_markdown_report
-from src.file_renamer import suggest_filenames
+from src.document_analyzer import analyze_documents
 
 
 def parse_args():
@@ -17,39 +15,27 @@ def parse_args():
     parser.add_argument("--input", required=True, help="Path to the input document folder")
     parser.add_argument("--output", required=True, help="Path to the output report folder")
     parser.add_argument("--summary-sentences", type=int, default=3, help="Number of summary sentences")
-    parser.add_argument("--keywords", type=int, default=7, help="Number of keywords")
+    parser.add_argument("--keywords", type=int, default=6, help="Number of keywords")
     parser.add_argument("--duplicate-threshold", type=float, default=0.70, help="Duplicate similarity threshold")
 
     return parser.parse_args()
 
 
-def format_keywords(keywords):
-    if not keywords:
-        return "키워드를 추출할 수 없습니다."
-
-    return ", ".join([keyword for keyword, score in keywords])
-
-
-def print_document_cards(documents, summary_sentences: int, keyword_count: int):
+def print_document_cards(analyses):
     print("\nDocument Analysis")
     print("-" * 60)
 
-    if not documents:
+    if not analyses:
         print("No supported documents found.")
         return
 
-    filename_suggestions = suggest_filenames(documents)
-
-    for index, document in enumerate(documents, start=1):
-        summary = summarize_text(document.text, max_sentences=summary_sentences)
-        keywords = extract_keywords(document.text, top_k=keyword_count)
-        suggested_name = filename_suggestions.get(document.file_name, document.file_name)
-
-        print(f"[{index}] {document.file_name}")
-        print(f"    글자 수       : {document.char_count}")
-        print(f"    핵심 키워드   : {format_keywords(keywords)}")
-        print(f"    추천 파일명   : {suggested_name}")
-        print(f"    요약          : {summary}")
+    for index, analysis in enumerate(analyses, start=1):
+        print(f"[{index}] {analysis.file_name}")
+        print(f"    글자 수       : {analysis.char_count}")
+        print(f"    대표 주제     : {analysis.topic}")
+        print(f"    핵심 키워드   : {', '.join(analysis.keywords)}")
+        print(f"    추천 파일명   : {analysis.suggested_name}")
+        print(f"    요약          : {analysis.summary}")
         print()
 
 
@@ -87,12 +73,13 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     documents = load_documents(input_dir)
-
-    print_document_cards(
-        documents=documents,
+    analyses = analyze_documents(
+        documents,
         summary_sentences=args.summary_sentences,
         keyword_count=args.keywords,
     )
+
+    print_document_cards(analyses)
 
     print_duplicate_candidates(
         documents=documents,
