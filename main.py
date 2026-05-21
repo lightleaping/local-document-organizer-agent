@@ -5,6 +5,7 @@ from src.document_loader import load_documents
 from src.summarizer import summarize_text
 from src.keyword_extractor import extract_keywords
 from src.duplicate_detector import detect_duplicates
+from src.report_generator import generate_markdown_report
 
 
 def parse_args():
@@ -100,7 +101,15 @@ def main():
     print_document_summary(documents)
     print_duplicate_candidates(documents)
 
+    report_path = generate_markdown_report(
+        documents=documents,
+        output_dir=output_dir,
+        duplicate_threshold=0.75
+    )
+
     print(f"Total documents loaded: {len(documents)}")
+    print(f"Report generated: {report_path}")
+
 
 if __name__ == "__main__":
     main()
