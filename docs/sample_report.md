@@ -2,16 +2,52 @@
 
 ## 1. 분석 개요
 
-- 총 문서 수: 3개
+- 총 문서 수: 7개
 - 요약 문장 수 옵션: 3
 - 키워드 개수 옵션: 7
 - 중복 탐지 임계값: 0.65
-- .md: 1개
+- .md: 5개
 - .txt: 2개
 
 ## 2. 문서별 분석 결과
 
-### 1. sample_ai.txt
+### 1. architecture.md
+
+- 파일 형식: `.md`
+- 글자 수: 946
+- 파일 경로: `sample_docs\docs\architecture.md`
+- 추천 파일명: `py_document_markdown.md`
+- 요약: `summarizer.py`가 문서별 요약을 생성합니다. `duplicate_detector.py`가 문서 간 유사도를 계산합니다. `report_generator.py`가 분석 결과를 Markdown 파일로 저장합니다.
+- 키워드: py, document, markdown, detector, duplicate, extractor, generator
+
+### 2. project_overview.md
+
+- 파일 형식: `.md`
+- 글자 수: 710
+- 파일 경로: `sample_docs\docs\project_overview.md`
+- 추천 파일명: `markdown_있음_문서를.md`
+- 요약: Local Document Organizer Agent 로컬 폴더 안의 PDF, TXT, Markdown 문서를 자동으로 읽고 요약, 키워드 추출, 중복 탐지, Markdown 리포트 생성을 수행하는 문서 자동화 Agent입니다. 이 프로젝트는 문서 기반 업무에서 반복적으로 발생하는 파일 확인, 요약, 분류, 중복 확인 작업을 자동화하기 위해 개발되었습니다. 폴더 내 문서 자동 탐색 PDF, TXT, Markdown 텍스트 추출 문서별 요약 생성 문서별 키워드 추출 중복 의심 문서 탐지 Markdown 리포트 생성 Python PyMuPDF scikit-learn TF-IDF cosine similarity argparse Markdown 문서 정리 시간을 줄일 수 있음 유사 문서를 빠르게 확인할 수 있음 문서 기반 AI 서비스의 전처리 구조를 이해할 수 있음 RAG 프로젝트와 연결 가능한 문서 처리 경험을 보여줄 수 있음
+- 키워드: markdown, 있음, 문서를, 요약, 중복, 추출, ai
+
+### 3. sample_report.md
+
+- 파일 형식: `.md`
+- 글자 수: 1250
+- 파일 경로: `sample_docs\docs\sample_report.md`
+- 추천 파일명: `sample_txt_ai.md`
+- 요약: 총 문서 수: 3개 .md: 1개 .txt: 2개 파일 형식: `.txt` 글자 수: 196 파일 경로: `sample_docs\sample_ai.txt` 요약: 최근에는 자연어 처리, 이미지 인식, 추천 시스템, 문서 자동화 등 다양한 분야에서 활용되고 있다. 키워드: 문서를, 자동화, 검색하는, 관리하고, 기능은 파일 형식: `.txt` 글자 수: 196 파일 경로: `sample_docs\sample_ai_copy.txt` 요약: 최근 인공지능은 자연어 처리, 이미지 인식, 추천 시스템, 문서 자동화 등 여러 분야에서 활용된다. 키워드: 문서를, 인공지능은, 자동화, 검색하는, 관리하고 파일 형식: `.md` 글자 수: 185 파일 경로: `sample_docs\sample_database.md` 요약: 데이터베이스는 데이터를 구조적으로 저장하고 관리하기 위한 시스템이다.
+- 키워드: sample, txt, ai, 자동화, 파일, 요약, md
+
+### 4. trouble_shooting.md
+
+- 파일 형식: `.md`
+- 글자 수: 1378
+- 파일 경로: `sample_docs\docs\trouble_shooting.md`
+- 추천 파일명: `문제_bash_원인.md`
+- 요약: --- `.gitignore`에서 실행 결과 리포트를 제외했기 때문입니다. ```gitignore reports/.md !reports/.gitkeep ``` 실행 결과 예시는 `docs/sample_report.md`로 복사하여 GitHub에 포함합니다. ```bash Copy-Item reports\document_report.md docs\sample_report.md ```
+- 키워드: 문제, bash, 원인, 해결, markdown, md, report
+
+### 5. sample_ai.txt
 
 - 파일 형식: `.txt`
 - 글자 수: 196
@@ -20,7 +56,7 @@
 - 요약: 최근에는 자연어 처리, 이미지 인식, 추천 시스템, 문서 자동화 등 다양한 분야에서 활용되고 있다. 문서 자동화 시스템에서는 문서를 읽고 핵심 내용을 요약하거나 키워드를 추출하는 작업이 중요하다. 이러한 기능은 대량의 문서를 효율적으로 관리하고 검색하는 데 도움을 준다.
 - 키워드: 문서를, 자동화, 검색하는, 관리하고, 기능은, 기반으로, 기술이다
 
-### 2. sample_ai_copy.txt
+### 6. sample_ai_copy.txt
 
 - 파일 형식: `.txt`
 - 글자 수: 196
@@ -29,7 +65,7 @@
 - 요약: 최근 인공지능은 자연어 처리, 이미지 인식, 추천 시스템, 문서 자동화 등 여러 분야에서 활용된다. 문서 자동화 도구에서는 문서를 읽고 핵심 내용을 요약하거나 주요 키워드를 추출하는 기능이 중요하다. 이 기능은 많은 문서를 효율적으로 관리하고 검색하는 데 도움을 준다.
 - 키워드: 문서를, 인공지능은, 자동화, 검색하는, 관리하고, 기능은, 기능이
 
-### 3. sample_database.md
+### 7. sample_database.md
 
 - 파일 형식: `.md`
 - 글자 수: 185
@@ -40,7 +76,7 @@
 
 ## 3. 중복 의심 문서
 
-- `sample_ai.txt` ↔ `sample_ai_copy.txt` / similarity: `0.7323`
+- `sample_ai.txt` ↔ `sample_ai_copy.txt` / similarity: `0.7499`
 
 ## 4. 처리 방식
 
