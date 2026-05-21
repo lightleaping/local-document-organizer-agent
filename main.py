@@ -32,6 +32,27 @@ def parse_args():
     # --output 옵션을 추가.
     # 필수 인자로, 결과 보고서를 저장할 폴더 경로를 받음.
 
+    parser.add_argument(
+        "--summary-sentences",
+        type=int,
+        default=2,
+        help="Number of sentences to include in each document summary"
+    )
+
+    parser.add_argument(
+        "--keywords",
+        type=int,
+        default=5,
+        help="Number of keywords to extract from each document"
+    )
+
+    parser.add_argument(
+        "--duplicate-threshold",
+        type=float,
+        default=0.70,
+        help="Similarity threshold for duplicate document detection"
+    )
+
     return parser.parse_args()
     # 실제로 명령줄 인자를 파싱해서 반환
 
@@ -42,32 +63,33 @@ def format_keywords(keywords):
     return ", ".join([keyword for keyword, score in keywords])
 
 
-def print_document_summary(documents):
+def print_document_summary(documents, summary_sentences: int, keyword_count: int):
     print("\nLoaded Documents")
     print("-" * 40)
 
     if not documents:
         print("No supported documents found.")
         return
-    
+
     filename_suggestions = suggest_filenames(documents)
 
     for index, document in enumerate(documents, start=1):
-        summary = summarize_text(document.text, max_sentences=2)
-        keywords = extract_keywords(document.text, top_k=5)
+        summary = summarize_text(document.text, max_sentences=summary_sentences)
+        keywords = extract_keywords(document.text, top_k=keyword_count)
         suggested_name = filename_suggestions.get(document.file_name, document.file_name)
 
         print(f"{index}. {document.file_name}")
-        print(f"   Extension  : {document.extension}")
-        print(f"   Characters : {document.char_count}")
-        print(f"   Path       : {document.file_path}")
-        print(f"   Summary    : {summary}")
-        print(f"   Keywords   : {format_keywords(keywords)}")
+        print(f"   Extension       : {document.extension}")
+        print(f"   Characters      : {document.char_count}")
+        print(f"   Path            : {document.file_path}")
+        print(f"   Summary         : {summary}")
+        print(f"   Keywords        : {format_keywords(keywords)}")
         print(f"   Suggested Name  : {suggested_name}")
         print()
 
-def print_duplicate_candidates(documents):
-    candidates = detect_duplicates(documents, threshold=0.70)
+
+def print_duplicate_candidates(documents, duplicate_threshold: float):
+    candidates = detect_duplicates(documents, threshold=duplicate_threshold)
 
     print("\nDuplicate Candidates")
     print("-" * 40)
@@ -101,15 +123,30 @@ def main():
     print(f"Input folder : {input_dir.resolve()}")
     print(f"Output folder: {output_dir.resolve()}")
     # 입력/출력 폴더의 절대 경로(resolve())를 출력.
-    
+
+    print(f"Summary sentences: {args.summary_sentences}")
+    print(f"Keyword count    : {args.keywords}")
+    print(f"Duplicate threshold: {args.duplicate_threshold}")
+
     documents = load_documents(input_dir)
-    print_document_summary(documents)
-    print_duplicate_candidates(documents)
+
+    print_document_summary(
+        documents=documents,
+        summary_sentences=args.summary_sentences,
+        keyword_count=args.keywords
+    )
+
+    print_duplicate_candidates(
+        documents=documents,
+        duplicate_threshold=args.duplicate_threshold
+    )
 
     report_path = generate_markdown_report(
         documents=documents,
         output_dir=output_dir,
-        duplicate_threshold=0.75
+        duplicate_threshold=args.duplicate_threshold,
+        summary_sentences=args.summary_sentences,
+        keyword_count=args.keywords
     )
 
     print(f"Total documents loaded: {len(documents)}")

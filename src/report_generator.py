@@ -29,7 +29,13 @@ def count_extensions(documents) -> dict:
     return extension_counts
 
 
-def generate_markdown_report(documents, output_dir: Path, duplicate_threshold: float = 0.75) -> Path:
+def generate_markdown_report(
+    documents,
+    output_dir: Path,
+    duplicate_threshold: float = 0.70,
+    summary_sentences: int = 2,
+    keyword_count: int = 5
+) -> Path:
     """
     Generate a Markdown report from analyzed documents.
     """
@@ -51,6 +57,9 @@ def generate_markdown_report(documents, output_dir: Path, duplicate_threshold: f
     lines.append("## 1. 분석 개요")
     lines.append("")
     lines.append(f"- 총 문서 수: {len(documents)}개")
+    lines.append(f"- 요약 문장 수 옵션: {summary_sentences}")
+    lines.append(f"- 키워드 개수 옵션: {keyword_count}")
+    lines.append(f"- 중복 탐지 임계값: {duplicate_threshold}")
 
     for extension, count in sorted(extension_counts.items()):
         lines.append(f"- {extension}: {count}개")
@@ -63,8 +72,8 @@ def generate_markdown_report(documents, output_dir: Path, duplicate_threshold: f
         lines.append("분석할 문서가 없습니다.")
     else:
         for index, document in enumerate(documents, start=1):
-            summary = summarize_text(document.text, max_sentences=2)
-            keywords = extract_keywords(document.text, top_k=5)
+            summary = summarize_text(document.text, max_sentences=summary_sentences)
+            keywords = extract_keywords(document.text, top_k=keyword_count)
             suggested_name = filename_suggestions.get(document.file_name, document.file_name)
 
             lines.append(f"### {index}. {document.file_name}")
@@ -97,6 +106,7 @@ def generate_markdown_report(documents, output_dir: Path, duplicate_threshold: f
     lines.append("- 키워드 추출: TF-IDF 기반 주요 단어 추출")
     lines.append("- 파일명 추천: 추출 키워드를 조합하여 안전한 파일명 후보 생성")
     lines.append("- 중복 탐지: 문자 n-gram 기반 TF-IDF 벡터와 cosine similarity 사용")
+    lines.append("- CLI 옵션: 요약 문장 수, 키워드 개수, 중복 탐지 임계값 조정 가능")
     lines.append("")
     lines.append("## 5. 한계 및 개선 가능성")
     lines.append("")
@@ -105,8 +115,7 @@ def generate_markdown_report(documents, output_dir: Path, duplicate_threshold: f
     lines.append("- 한국어 형태소 분석기를 사용하지 않아 조사나 어미가 포함된 키워드가 나올 수 있습니다.")
     lines.append("- 향후 kiwipiepy, sentence-transformers, 로컬 LLM 등을 활용하여 품질을 개선할 수 있습니다.")
     lines.append("")
-    
-    report_path.write_text("\n".join(lines), encoding="utf-8")
-    lines.append(f"- 추천 파일명: `{suggested_name}`")
-    return report_path
 
+    report_path.write_text("\n".join(lines), encoding="utf-8")
+
+    return report_path
