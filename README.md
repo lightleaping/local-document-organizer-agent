@@ -171,10 +171,10 @@ pip install -r requirements.txt
 ```
 
 ---
-
+<img width="2492" height="1523" alt="Image" src="https://github.com/user-attachments/assets/bc3a43a5-1bb1-419e-9e58-ba55fc6e0ccc" />
 <img width="2492" height="1525" alt="Image" src="https://github.com/user-attachments/assets/3ece6a3d-4057-4f17-a01d-6f61051d5c39" />
 <img width="2492" height="1523" alt="Image" src="https://github.com/user-attachments/assets/fae67083-1510-43a5-9e8e-6396386ca1ff" />
-<img width="2492" height="1523" alt="Image" src="https://github.com/user-attachments/assets/bc3a43a5-1bb1-419e-9e58-ba55fc6e0ccc" />
+
 
 ## 7. 실행 방법
 
