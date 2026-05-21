@@ -8,9 +8,6 @@ from src.file_renamer import suggest_filenames
 
 
 def format_keywords(keywords) -> str:
-    """
-    Convert keyword tuples into a readable string.
-    """
     if not keywords:
         return "키워드를 추출할 수 없습니다."
 
@@ -18,14 +15,11 @@ def format_keywords(keywords) -> str:
 
 
 def count_extensions(documents) -> dict:
-    """
-    Count documents by file extension.
-    """
     extension_counts = {}
 
     for document in documents:
         extension_counts[document.extension] = extension_counts.get(document.extension, 0) + 1
-        # 이렇게 하면 키가 없을 때는 0부터 시작해서 +1, 있으면 기존 값에 +1을 더해주면서 카운팅이 됩니다.
+
     return extension_counts
 
 
@@ -33,87 +27,88 @@ def generate_markdown_report(
     documents,
     output_dir: Path,
     duplicate_threshold: float = 0.70,
-    summary_sentences: int = 2,
-    keyword_count: int = 5
+    summary_sentences: int = 3,
+    keyword_count: int = 7,
 ) -> Path:
     """
-    Generate a Markdown report from analyzed documents.
+    Generate a user-friendly Markdown report from analyzed documents.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
     report_path = output_dir / "document_report.md"
 
     extension_counts = count_extensions(documents)
-    duplicate_candidates = detect_duplicates(
-        documents,
-        threshold=duplicate_threshold
-    )
+    duplicate_candidates = detect_duplicates(documents, threshold=duplicate_threshold)
     filename_suggestions = suggest_filenames(documents)
 
     lines: List[str] = []
 
-    lines.append("# Local Document Organizer Report")
+    lines.append("# 문서 정리 분석 리포트")
     lines.append("")
-    lines.append("## 1. 분석 개요")
+    lines.append("## 1. 전체 요약")
     lines.append("")
-    lines.append(f"- 총 문서 수: {len(documents)}개")
-    lines.append(f"- 요약 문장 수 옵션: {summary_sentences}")
-    lines.append(f"- 키워드 개수 옵션: {keyword_count}")
-    lines.append(f"- 중복 탐지 임계값: {duplicate_threshold}")
+    lines.append(f"- 분석 문서 수: **{len(documents)}개**")
+    lines.append(f"- 요약 문장 수: **{summary_sentences}개**")
+    lines.append(f"- 키워드 개수: **{keyword_count}개**")
+    lines.append(f"- 중복 탐지 임계값: **{duplicate_threshold}**")
 
-    for extension, count in sorted(extension_counts.items()):
-        lines.append(f"- {extension}: {count}개")
+    if extension_counts:
+        extension_text = ", ".join(
+            [f"{extension} {count}개" for extension, count in sorted(extension_counts.items())]
+        )
+        lines.append(f"- 파일 형식 분포: {extension_text}")
 
     lines.append("")
-    lines.append("## 2. 문서별 분석 결과")
+    lines.append("## 2. 문서 정리 표")
+    lines.append("")
+    lines.append("| 원본 파일명 | 추천 파일명 | 글자 수 | 핵심 키워드 |")
+    lines.append("|---|---|---:|---|")
+
+    document_results = []
+
+    for document in documents:
+        keywords = extract_keywords(document.text, top_k=keyword_count)
+        keyword_text = format_keywords(keywords)
+        suggested_name = filename_suggestions.get(document.file_name, document.file_name)
+        summary = summarize_text(document.text, max_sentences=summary_sentences)
+
+        document_results.append((document, suggested_name, keyword_text, summary))
+
+        lines.append(
+            f"| `{document.file_name}` | `{suggested_name}` | {document.char_count} | {keyword_text} |"
+        )
+
+    lines.append("")
+    lines.append("## 3. 문서별 요약")
     lines.append("")
 
-    if not documents:
-        lines.append("분석할 문서가 없습니다.")
-    else:
-        for index, document in enumerate(documents, start=1):
-            summary = summarize_text(document.text, max_sentences=summary_sentences)
-            keywords = extract_keywords(document.text, top_k=keyword_count)
-            suggested_name = filename_suggestions.get(document.file_name, document.file_name)
+    for index, (document, suggested_name, keyword_text, summary) in enumerate(document_results, start=1):
+        lines.append(f"### {index}. {document.file_name}")
+        lines.append("")
+        lines.append(f"- 추천 파일명: `{suggested_name}`")
+        lines.append(f"- 핵심 키워드: {keyword_text}")
+        lines.append(f"- 요약: {summary}")
+        lines.append("")
 
-            lines.append(f"### {index}. {document.file_name}")
-            lines.append("")
-            lines.append(f"- 파일 형식: `{document.extension}`")
-            lines.append(f"- 글자 수: {document.char_count}")
-            lines.append(f"- 파일 경로: `{document.file_path}`")
-            lines.append(f"- 추천 파일명: `{suggested_name}`")
-            lines.append(f"- 요약: {summary}")
-            lines.append(f"- 키워드: {format_keywords(keywords)}")
-            lines.append("")
-
-    lines.append("## 3. 중복 의심 문서")
+    lines.append("## 4. 중복 의심 문서")
     lines.append("")
 
     if not duplicate_candidates:
         lines.append("중복 의심 문서가 발견되지 않았습니다.")
     else:
+        lines.append("| 문서 A | 문서 B | 유사도 |")
+        lines.append("|---|---|---:|")
+
         for candidate in duplicate_candidates:
-            lines.append(
-                f"- `{candidate.file_a}` ↔ `{candidate.file_b}` "
-                f"/ similarity: `{candidate.similarity}`"
-            )
+            lines.append(f"| `{candidate.file_a}` | `{candidate.file_b}` | `{candidate.similarity}` |")
 
     lines.append("")
-    lines.append("## 4. 처리 방식")
+    lines.append("## 5. 처리 기준")
     lines.append("")
-    lines.append("- 문서 로딩: PDF, TXT, Markdown 파일을 읽어 텍스트로 변환")
-    lines.append("- 요약: 단어 빈도 기반 문장 점수를 계산하여 핵심 문장 추출")
-    lines.append("- 키워드 추출: TF-IDF 기반 주요 단어 추출")
-    lines.append("- 파일명 추천: 추출 키워드를 조합하여 안전한 파일명 후보 생성")
-    lines.append("- 중복 탐지: 문자 n-gram 기반 TF-IDF 벡터와 cosine similarity 사용")
-    lines.append("- CLI 옵션: 요약 문장 수, 키워드 개수, 중복 탐지 임계값 조정 가능")
-    lines.append("")
-    lines.append("## 5. 한계 및 개선 가능성")
-    lines.append("")
-    lines.append("- 현재 요약은 생성형 요약이 아니라 추출식 요약 방식입니다.")
-    lines.append("- 파일명 추천은 실제 파일을 변경하지 않고 후보명만 제공합니다.")
-    lines.append("- 한국어 형태소 분석기를 사용하지 않아 조사나 어미가 포함된 키워드가 나올 수 있습니다.")
-    lines.append("- 향후 kiwipiepy, sentence-transformers, 로컬 LLM 등을 활용하여 품질을 개선할 수 있습니다.")
+    lines.append("- 요약: 문서 내부 문장 중 중요도가 높은 문장을 추출합니다.")
+    lines.append("- 키워드: 복합 도메인 표현을 우선 추출하고, 조사 제거 후 핵심 단어를 보완합니다.")
+    lines.append("- 추천 파일명: 문서 유형과 핵심 키워드를 조합하되 실제 파일은 변경하지 않습니다.")
+    lines.append("- 중복 탐지: 문자 n-gram TF-IDF와 cosine similarity를 사용합니다.")
     lines.append("")
 
     report_path.write_text("\n".join(lines), encoding="utf-8")

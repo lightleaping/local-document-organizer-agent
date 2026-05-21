@@ -1,3 +1,5 @@
 pymupdf
 scikit-learn
 numpy
+streamlit
+pandas

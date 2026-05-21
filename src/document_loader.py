@@ -1,20 +1,21 @@
-from dataclasses import dataclass # dataclass : 데이터 수조를 간단히 정의할 수 있게 해주는 데코레이터
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List # List : 타입 힌트용, List[Document] 같은 식으로 사용
+from typing import List
 
 import fitz  # PyMuPDF
-# PDF 파일에서 텍스트를 추출할 수 있는 라이브러리
+
 
 SUPPORTED_EXTENSIONS = {".txt", ".md", ".pdf"}
+IGNORED_DIR_NAMES = {".git", ".venv", "venv", "env", "__pycache__", "reports"}
 
 
 @dataclass
 class Document:
     file_path: Path
     file_name: str
-    extension: str # 확장자
-    text: str # 텍스트 내용
-    char_count: int # 글자 수
+    extension: str
+    text: str
+    char_count: int
 
 
 def read_text_file(file_path: Path) -> str:
@@ -38,6 +39,13 @@ def read_pdf_file(file_path: Path) -> str:
             text_chunks.append(page.get_text())
 
     return "\n".join(text_chunks).strip()
+
+
+def is_ignored_path(file_path: Path) -> bool:
+    """
+    Skip virtual environments, cache folders, git folders, and output folders.
+    """
+    return any(part in IGNORED_DIR_NAMES for part in file_path.parts)
 
 
 def read_document(file_path: Path) -> Document:
@@ -74,8 +82,10 @@ def load_documents(input_dir: Path) -> List[Document]:
     documents = []
 
     for file_path in sorted(input_dir.rglob("*")):
-    # rglob("*"): 하위 폴더까지 포함해 모든 파일 탐색.
         if not file_path.is_file():
+            continue
+
+        if is_ignored_path(file_path):
             continue
 
         if file_path.suffix.lower() not in SUPPORTED_EXTENSIONS:

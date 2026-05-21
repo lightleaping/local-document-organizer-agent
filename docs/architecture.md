@@ -3,18 +3,20 @@
 ## 전체 구조
 
 ```text
-Input Folder
-    ↓
+사용자
+  ├─ Streamlit Web UI
+  └─ CLI 실행
+        ↓
 Document Loader
-    ↓
-Text Preprocessing
-    ↓
+        ↓
 Summarizer
-    ↓
+        ↓
 Keyword Extractor
-    ↓
+        ↓
+Filename Suggester
+        ↓
 Duplicate Detector
-    ↓
+        ↓
 Markdown Report Generator
 ```
 
@@ -22,27 +24,18 @@ Markdown Report Generator
 
 | 모듈 | 역할 |
 |---|---|
-| main.py | CLI 인자 처리와 전체 파이프라인 실행 |
-| document_loader.py | PDF, TXT, Markdown 파일 탐색 및 텍스트 추출 |
-| summarizer.py | 문장 분리, 전처리, 핵심 문장 추출 |
-| keyword_extractor.py | TF-IDF 기반 키워드 추출 |
-| duplicate_detector.py | 문서 간 cosine similarity 계산 및 중복 후보 탐지 |
-| report_generator.py | 분석 결과를 Markdown 리포트로 저장 |
-
-## 데이터 흐름
-
-1. 사용자가 입력 폴더와 출력 폴더를 지정합니다.
-2. `document_loader.py`가 지원 확장자 파일을 탐색합니다.
-3. 각 문서의 텍스트, 파일명, 확장자, 글자 수를 `Document` 객체로 저장합니다.
-4. `summarizer.py`가 문서별 요약을 생성합니다.
-5. `keyword_extractor.py`가 문서별 주요 키워드를 추출합니다.
-6. `duplicate_detector.py`가 문서 간 유사도를 계산합니다.
-7. `report_generator.py`가 분석 결과를 Markdown 파일로 저장합니다.
+| `app.py` | Streamlit 기반 웹 UI |
+| `main.py` | CLI 인자 처리와 전체 파이프라인 실행 |
+| `document_loader.py` | PDF, TXT, Markdown 문서 탐색 및 텍스트 추출 |
+| `summarizer.py` | 문장 분리와 추출식 요약 |
+| `keyword_extractor.py` | TF-IDF 기반 키워드 추출 |
+| `file_renamer.py` | 키워드 기반 추천 파일명 생성 |
+| `duplicate_detector.py` | 문서 간 cosine similarity 계산 |
+| `report_generator.py` | Markdown 리포트 생성 |
 
 ## 설계 특징
 
-- 외부 API 없이 로컬에서 실행 가능
-- CLI 기반으로 재사용 가능
-- 기능별 모듈 분리
-- 실행 결과와 예시 문서 분리
-- RAG 전처리 파이프라인으로 확장 가능
+- CLI와 웹 UI를 분리하여 재사용성 확보
+- 핵심 분석 로직은 `src` 모듈에 분리
+- 사용자의 원본 파일은 직접 변경하지 않고 추천 결과만 제공
+- 실행 결과는 Markdown으로 저장해 포트폴리오와 문서화에 활용 가능
