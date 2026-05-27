@@ -1,12 +1,8 @@
-from pathlib import Path
-import tempfile
-
 import streamlit as st
 
-from src.document_loader import load_documents
-from src.duplicate_detector import detect_duplicates
 from src.document_analyzer import analyze_documents
-from src.report_generator import generate_markdown_report
+from src.document_loader import load_uploaded_documents
+import src.duplicate_detector as duplicate_detector
 
 
 st.set_page_config(
@@ -16,166 +12,280 @@ st.set_page_config(
 )
 
 
-def save_uploaded_files(uploaded_files, target_dir: Path):
-    target_dir.mkdir(parents=True, exist_ok=True)
+def render_metric_cards(total_docs: int, duplicate_count: int, keyword_count: int) -> None:
+    col1, col2, col3 = st.columns(3)
+    col1.metric("문서 수", total_docs)
+    col2.metric("중복 후보", duplicate_count)
+    col3.metric("키워드 수", keyword_count)
 
-    for uploaded_file in uploaded_files:
-        file_path = target_dir / uploaded_file.name
-        file_path.write_bytes(uploaded_file.getbuffer())
 
-
-def render_keyword_chips(keywords):
+def render_keywords(keywords) -> None:
     if not keywords:
-        st.caption("키워드를 추출하지 못했습니다.")
+        st.write("키워드 없음")
         return
 
-    chip_html = "<div style='display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; margin-bottom:8px;'>"
-
     for keyword in keywords:
-        chip_html += (
-            "<span style='"
-            "background:#dbeafe;"
-            "color:#111827;"
-            "border:1px solid #2563eb;"
-            "border-radius:999px;"
-            "padding:6px 12px;"
-            "font-size:0.92rem;"
-            "font-weight:700;"
-            "white-space:nowrap;"
-            "'>"
-            f"{keyword}"
-            "</span>"
-        )
-
-    chip_html += "</div>"
-    st.markdown(chip_html, unsafe_allow_html=True)
+        st.markdown(f"- `{keyword}`")
 
 
-def render_document_card(analysis, index: int):
-    with st.container(border=True):
-        st.markdown(f"### {index}. {analysis.title}")
-        st.caption(analysis.file_name)
+def render_document_card(analysis, index: int) -> None:
+    if analysis is None:
+        st.warning(f"{index}. 이 문서는 분석 결과를 생성하지 못했습니다.")
+        return
 
-        col1, col2, col3 = st.columns([1.2, 1, 2])
+    st.markdown(f"### {index}. {analysis.title}")
+    st.caption(analysis.file_name)
 
-        with col1:
-            st.metric("문서 유형", analysis.document_type)
+    col1, col2 = st.columns(2)
 
-        with col2:
-            st.metric("글자 수", f"{analysis.char_count:,}")
+    with col1:
+        st.markdown("**문서 유형**")
+        st.write(analysis.document_type)
 
-        with col3:
-            st.markdown("**추천 파일명**")
-            st.code(analysis.suggested_name, language=None)
+        st.markdown("**글자 수**")
+        st.write(f"{analysis.char_count:,}")
 
+        st.markdown("**추천 파일명**")
+        st.code(analysis.suggested_name)
         st.caption(analysis.filename_reason)
 
+    with col2:
         st.markdown("**핵심 키워드**")
-        render_keyword_chips(analysis.keywords)
+        render_keywords(analysis.keywords)
 
-        st.markdown("**요약**")
-        st.write(analysis.summary)
+    st.markdown("**요약**")
+    st.write(analysis.summary)
+
+    st.divider()
 
 
-def main():
-    st.title("📁 Local Document Organizer Agent")
-    st.caption("문서를 업로드하면 문서 유형, 제목, 핵심 키워드, 추천 파일명, 요약, 중복 후보를 정리합니다.")
+def normalize_duplicate_candidate(candidate):
+    if isinstance(candidate, tuple):
+        if len(candidate) == 3:
+            return str(candidate[0]), str(candidate[1]), float(candidate[2])
+        if len(candidate) == 2:
+            pair, score = candidate
+            return str(pair), "", float(score)
 
-    with st.sidebar:
-        st.header("분석 설정")
-        summary_sentences = st.slider("요약 문장 수", min_value=1, max_value=5, value=3)
-        keyword_count = st.slider("키워드 개수", min_value=3, max_value=10, value=6)
-        duplicate_threshold = st.slider(
-            "중복 탐지 임계값",
-            min_value=0.50,
-            max_value=0.95,
-            value=0.65,
-            step=0.01,
+    if isinstance(candidate, dict):
+        left = (
+            candidate.get("file_a")
+            or candidate.get("left")
+            or candidate.get("doc1")
+            or candidate.get("document_a")
+            or "문서 A"
+        )
+        right = (
+            candidate.get("file_b")
+            or candidate.get("right")
+            or candidate.get("doc2")
+            or candidate.get("document_b")
+            or "문서 B"
+        )
+        score = (
+            candidate.get("score")
+            or candidate.get("similarity")
+            or candidate.get("similarity_score")
+            or 0
+        )
+        return str(left), str(right), float(score)
+
+    return str(candidate), "", 0.0
+
+
+def render_duplicate_candidates(duplicate_candidates) -> None:
+    st.subheader("중복 의심 문서")
+
+    if not duplicate_candidates:
+        st.info("중복 의심 문서가 발견되지 않았습니다.")
+        return
+
+    for candidate in duplicate_candidates:
+        left, right, score = normalize_duplicate_candidate(candidate)
+
+        if right:
+            st.warning(f"{left} ↔ {right}")
+        else:
+            st.warning(left)
+
+        st.caption(f"유사도: {score:.4f}")
+
+
+def safe_find_duplicates(documents):
+    candidate_function_names = [
+        "find_duplicate_candidates",
+        "find_duplicates",
+        "detect_duplicates",
+        "find_duplicate_documents",
+        "detect_duplicate_candidates",
+    ]
+
+    for function_name in candidate_function_names:
+        function = getattr(duplicate_detector, function_name, None)
+
+        if function is None:
+            continue
+
+        try:
+            return function(documents)
+        except TypeError:
+            for kwargs in ({"threshold": 0.5}, {"similarity_threshold": 0.5}):
+                try:
+                    return function(documents, **kwargs)
+                except TypeError:
+                    continue
+                except Exception as error:
+                    st.warning(f"중복 후보 탐지 중 오류가 발생했습니다: {error}")
+                    return []
+        except Exception as error:
+            st.warning(f"중복 후보 탐지 중 오류가 발생했습니다: {error}")
+            return []
+
+    st.info("중복 후보 탐지 함수를 찾지 못해 중복 탐지를 건너뛰었습니다.")
+    return []
+
+
+def generate_report_text(analyses, duplicate_candidates) -> str:
+    lines = [
+        "# 문서 정리 분석 리포트",
+        "",
+        "## 1. 전체 요약",
+        "",
+        f"- 분석 문서 수: {len(analyses)}개",
+        f"- 중복 의심 문서: {len(duplicate_candidates)}건",
+        "- 처리 방식: 문서 로딩 → 텍스트 품질 검사 → 로컬 임베딩 기반 문서 유형 분류 → 키워드/요약/추천 파일명 생성",
+        "",
+        "## 2. 문서별 정리",
+        "",
+    ]
+
+    for index, analysis in enumerate(analyses, start=1):
+        if analysis is None:
+            continue
+
+        lines.extend(
+            [
+                f"### {index}. {analysis.file_name}",
+                "",
+                f"- 문서 제목: {analysis.title}",
+                f"- 문서 유형: {analysis.document_type}",
+                f"- 글자 수: {analysis.char_count}",
+                f"- 핵심 키워드: {', '.join(analysis.keywords) if analysis.keywords else '없음'}",
+                f"- 추천 파일명: `{analysis.suggested_name}`",
+                f"- 추천 근거: {analysis.filename_reason}",
+                "",
+                "**요약**",
+                "",
+                analysis.summary,
+                "",
+            ]
         )
 
-        st.divider()
-        st.markdown("### 분석 방식")
-        st.write("1. 문서 유형 판정")
-        st.write("2. 유형별 제목 생성")
-        st.write("3. 핵심 개념 선별")
-        st.write("4. 유형 기반 파일명 추천")
-        st.write("5. 문장형 요약 생성")
+    lines.extend(["## 3. 중복 의심 문서", ""])
+
+    if duplicate_candidates:
+        for candidate in duplicate_candidates:
+            left, right, score = normalize_duplicate_candidate(candidate)
+            if right:
+                lines.append(f"- {left} ↔ {right} / 유사도: {score:.4f}")
+            else:
+                lines.append(f"- {left} / 유사도: {score:.4f}")
+    else:
+        lines.append("- 중복 의심 문서가 발견되지 않았습니다.")
+
+    lines.extend(
+        [
+            "",
+            "## 4. 처리 기준",
+            "",
+            "- 같은 파일명으로 업로드된 문서는 내부 표시명을 다르게 생성해 각각 분석합니다.",
+            "- PDF/TXT/Markdown에서 추출된 텍스트 품질을 먼저 확인합니다.",
+            "- 깨진 텍스트는 무리하게 요약하지 않고 확인 필요 문서로 분리합니다.",
+            "- 정상 텍스트는 로컬 임베딩 기반 문서 유형 분류 후 키워드와 요약을 생성합니다.",
+            "- 로컬 LLM 요약 모드는 선택 기능이며, 실패 시 기본 추출형 요약으로 자동 대체합니다.",
+        ]
+    )
+
+    return "\n".join(lines)
+
+
+def main() -> None:
+    st.title("📁 Local Document Organizer Agent")
+    st.write(
+        "문서를 업로드하면 문서 유형, 제목, 핵심 키워드, 추천 파일명, 요약, 중복 후보를 정리합니다."
+    )
+
+    with st.sidebar:
+        st.header("분석 옵션")
+        use_local_llm = st.checkbox(
+            "로컬 LLM 요약 사용",
+            value=False,
+            help="Ollama가 실행 중일 때만 사용하세요. 실패하면 기본 추출형 요약으로 자동 대체됩니다.",
+        )
+        llm_model = st.text_input(
+            "Ollama 모델명",
+            value="qwen2.5:1.5b",
+            help="예: qwen2.5:1.5b, llama3.2:1b, gemma2:2b",
+        )
+        st.caption("기본 모드는 외부 API 없이 로컬 임베딩 + 추출형 요약으로 동작합니다.")
 
     uploaded_files = st.file_uploader(
         "분석할 문서를 업로드하세요",
-        type=["pdf", "txt", "md"],
+        type=["txt", "md", "markdown", "pdf"],
         accept_multiple_files=True,
     )
 
     if not uploaded_files:
-        st.info("문서를 업로드하면 문서별 카드 형태로 결과가 표시됩니다.")
+        st.info("TXT, Markdown, PDF 문서를 업로드하면 분석 결과가 표시됩니다.")
         return
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        input_dir = Path(temp_dir) / "input_docs"
-        output_dir = Path(temp_dir) / "reports"
-
-        save_uploaded_files(uploaded_files, input_dir)
-        documents = load_documents(input_dir)
+    with st.spinner("문서를 읽고 분석하는 중입니다..."):
+        documents = load_uploaded_documents(uploaded_files)
 
         if not documents:
-            st.warning("분석 가능한 문서가 없습니다.")
+            st.error("분석 가능한 문서를 읽지 못했습니다.")
             return
 
         analyses = analyze_documents(
             documents,
-            summary_sentences=summary_sentences,
-            keyword_count=keyword_count,
+            use_local_llm=use_local_llm,
+            llm_model=llm_model,
         )
-        duplicate_candidates = detect_duplicates(documents, threshold=duplicate_threshold)
+        duplicate_candidates = safe_find_duplicates(documents)
 
-        st.success(f"{len(documents)}개 문서를 분석했습니다.")
+    st.success(f"{len(documents)}개 문서를 분석했습니다.")
 
-        col1, col2, col3 = st.columns(3)
-        col1.metric("문서 수", len(documents))
-        col2.metric("중복 후보", len(duplicate_candidates))
-        col3.metric("키워드 수", keyword_count)
+    total_keyword_count = sum(
+        len(analysis.keywords)
+        for analysis in analyses
+        if analysis and analysis.keywords
+    )
 
-        st.divider()
+    render_metric_cards(
+        total_docs=len(documents),
+        duplicate_count=len(duplicate_candidates),
+        keyword_count=total_keyword_count,
+    )
 
-        st.subheader("문서별 분석 결과")
-        for index, analysis in enumerate(analyses, start=1):
-            render_document_card(analysis, index)
+    st.subheader("문서별 분석 결과")
 
-        st.divider()
+    for index, analysis in enumerate(analyses, start=1):
+        render_document_card(analysis, index)
 
-        st.subheader("중복 의심 문서")
-        if not duplicate_candidates:
-            st.info("중복 의심 문서가 발견되지 않았습니다.")
-        else:
-            for candidate in duplicate_candidates:
-                with st.container(border=True):
-                    st.markdown(f"**{candidate.file_a}** ↔ **{candidate.file_b}**")
-                    st.progress(min(candidate.similarity, 1.0))
-                    st.caption(f"유사도: {candidate.similarity}")
+    render_duplicate_candidates(duplicate_candidates)
 
-        report_path = generate_markdown_report(
-            documents=documents,
-            output_dir=output_dir,
-            duplicate_threshold=duplicate_threshold,
-            summary_sentences=summary_sentences,
-            keyword_count=keyword_count,
-        )
+    st.subheader("Markdown 리포트")
+    report = generate_report_text(analyses, duplicate_candidates)
 
-        report_text = report_path.read_text(encoding="utf-8")
+    st.markdown("**리포트 미리보기**")
+    st.markdown(report)
 
-        st.divider()
-        st.subheader("Markdown 리포트")
-        with st.expander("리포트 미리보기", expanded=False):
-            st.markdown(report_text)
-
-        st.download_button(
-            label="Markdown 리포트 다운로드",
-            data=report_text,
-            file_name="document_report.md",
-            mime="text/markdown",
-            use_container_width=True,
-        )
+    st.download_button(
+        label="Markdown 리포트 다운로드",
+        data=report,
+        file_name="document_organizer_report.md",
+        mime="text/markdown",
+    )
 
 
 if __name__ == "__main__":
