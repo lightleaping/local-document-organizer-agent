@@ -21,6 +21,14 @@ class DocumentAnalysis:
 
 DOCUMENT_PROFILES = [
     {
+        "profile_id": "english_vocabulary",
+        "document_type": "영어 어휘 학습 자료",
+        "title": "영어 어휘와 예문 학습 자료",
+        "filename_base": "english_vocabulary_study_notes",
+        "signals": ["vocabulary", "word", "words", "plans", "have", "some", "any", "do", "약속", "어휘", "예문"],
+        "keywords": ["영어 어휘", "vocabulary", "plans", "have", "some", "any", "do", "약속"],
+    },
+    {
         "profile_id": "ai_document_automation",
         "document_type": "AI 문서 자동화 개요",
         "title": "AI 기반 문서 자동화 활용 정리",
@@ -75,7 +83,7 @@ def select_profile(text: str) -> dict | None:
 
     best_profile, best_score = scored_profiles[0]
 
-    if best_score <= 0:
+    if best_score < 2:
         return None
 
     return best_profile
@@ -141,6 +149,9 @@ def build_summary(text: str, profile: dict | None, summary_sentences: int) -> st
     extracted_summary = summarize_text(text, max_sentences=summary_sentences)
 
     if not profile:
+        return extracted_summary
+    
+    if profile["profile_id"] == "english_vocabulary":
         return extracted_summary
 
     if profile["profile_id"] == "ai_document_automation":
